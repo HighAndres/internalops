@@ -1,0 +1,263 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  TECHNICIAN
+  VIEWER
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  PROSPECT
+  CHURNED
+}
+
+enum HistoryType {
+  INCIDENT
+  MAINTENANCE
+  MEETING
+  DEPLOYMENT
+  SUPPORT
+  TRAINING
+  AUDIT
+  OTHER
+}
+
+enum RiskSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RiskStatus {
+  OPEN
+  MITIGATED
+  ACCEPTED
+  CLOSED
+}
+
+enum PendingPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum PendingStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum AssetType {
+  SERVER
+  WORKSTATION
+  LAPTOP
+  PRINTER
+  NETWORK_DEVICE
+  PHONE
+  TABLET
+  SOFTWARE
+  LICENSE
+  OTHER
+}
+
+enum AssetStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  RETIRED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  PENDING
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String?
+  role      UserRole @default(VIEWER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Client {
+  id                String       @id @default(cuid())
+  name              String
+  legalName         String?
+  contactName       String?
+  contactEmail      String?
+  phone             String?
+  status            ClientStatus @default(ACTIVE)
+  notes             String?
+  ticketsClientSlug String?      @unique
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  history       InternalHistoryEntry[]
+  tickets       RelatedTicket[]
+  risks         InternalRisk[]
+  pendingItems  InternalPendingItem[]
+  assets        ClientAsset[]
+  documents     InternalDocument[]
+  internalNotes InternalNote[]
+}
+
+model InternalHistoryEntry {
+  id              String      @id @default(cuid())
+  clientId        String
+  relatedTicketId String?
+  title           String
+  type            HistoryType
+  summary         String
+  details         String?
+  rootCause       String?
+  actionTaken     String?
+  result          String?
+  impact          String?
+  createdById     String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model RelatedTicket {
+  id                   String          @id @default(cuid())
+  clientId             String
+  externalTicketId     String          @unique
+  externalTicketNumber String?
+  title                String
+  status               TicketStatus
+  priority             TicketPriority?
+  category             String?
+  subcategory          String?
+  assignedTo           String?
+  requester            String?
+  requesterEmail       String?
+  sourceSystem         String          @default("mirmibug-tickets")
+  openedAt             DateTime?
+  closedAt             DateTime?
+  commentsJson         String?
+  activitiesJson       String?
+  ticketUpdatedAt      DateTime?
+  syncedAt             DateTime?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model TicketSyncLog {
+  id         String   @id @default(cuid())
+  clientSlug String?
+  status     String
+  message    String?
+  count      Int      @default(0)
+  syncedAt   DateTime @default(now())
+}
+
+model InternalRisk {
+  id             String       @id @default(cuid())
+  clientId       String
+  title          String
+  description    String
+  severity       RiskSeverity
+  status         RiskStatus   @default(OPEN)
+  recommendation String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model InternalPendingItem {
+  id          String          @id @default(cuid())
+  clientId    String
+  title       String
+  description String?
+  priority    PendingPriority @default(MEDIUM)
+  status      PendingStatus   @default(OPEN)
+  dueDate     DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model ClientAsset {
+  id           String      @id @default(cuid())
+  clientId     String
+  name         String
+  type         AssetType
+  brand        String?
+  model        String?
+  serialNumber String?
+  ipAddress    String?
+  location     String?
+  assignedTo   String?
+  status       AssetStatus @default(ACTIVE)
+  notes        String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model InternalDocument {
+  id        String   @id @default(cuid())
+  clientId  String
+  title     String
+  category  String
+  content   String
+  tags      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model InternalNote {
+  id        String   @id @default(cuid())
+  clientId  String
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  entityType  String
+  entityId    String
+  action      String
+  description String?
+  createdAt   DateTime @default(now())
+}
